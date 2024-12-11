@@ -5,8 +5,46 @@ import { useState } from 'react';
 export default function FormPage() {
   const [formData, setFormData] = useState({ name: '', email: '', amount: '' });
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayment = async (order) => {
+    const isScriptLoaded = await loadRazorpayScript();
+
+    if (!isScriptLoaded) {
+      alert('Failed to load Razorpay SDK. Please check your internet connection.');
+      return;
+    }
+
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: 'INR',
+      name: 'Test Payment',
+      description: 'Test Transaction',
+      order_id: order.id,
+      handler: function (response) {
+        alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+      },
+      prefill: {
+        name: formData.name,
+        email: formData.email,
+      },
+    };
+
+    const razorpayInstance = new Razorpay(options);
+    razorpayInstance.open();
   };
 
   const handleSubmit = async (e) => {
@@ -19,28 +57,12 @@ export default function FormPage() {
     });
 
     const data = await res.json();
-    handlePayment(data.order);
-  };
 
-  const handlePayment = (order) => {
-    const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: 'INR',
-      name: 'Test Transaction',
-      description: 'Razorpay Payment Test',
-      order_id: order.id,
-      handler: function (response) {
-        alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
-      },
-      prefill: {
-        name: formData.name,
-        email: formData.email,
-      },
-    };
-
-    const rzp1 = new Razorpay(options);
-    rzp1.open();
+    if (data.order) {
+      handlePayment(data.order);
+    } else {
+      alert('Failed to create payment order. Please try again.');
+    }
   };
 
   return (
@@ -52,7 +74,7 @@ export default function FormPage() {
           name="name"
           placeholder="Name"
           value={formData.name}
-          onChange={handleChange}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
         />
         <input
@@ -60,7 +82,7 @@ export default function FormPage() {
           name="email"
           placeholder="Email"
           value={formData.email}
-          onChange={handleChange}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           required
         />
         <input
@@ -68,7 +90,7 @@ export default function FormPage() {
           name="amount"
           placeholder="Amount"
           value={formData.amount}
-          onChange={handleChange}
+          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
           required
         />
         <button type="submit">Pay Now</button>
