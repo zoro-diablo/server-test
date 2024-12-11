@@ -1,7 +1,6 @@
 {
-    "framework": "nextjs",
-    "public": {
-      "disablePreviewModeBanner": true
-    }
+  "framework": "nextjs",
+  "public": {
+    "disablePreviewModeBanner": true
   }
-  
+}
